@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Reino Pixel — MMORPG Clássico</title>
+<style>
+  :root { --ink:#101b2a; --paper:#f4edda; --panel:#1d2c40; --gold:#f6c969; --mint:#79e4b5; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#09131f; color:var(--paper); font-family:system-ui,monospace; display:flex; min-height:100vh; align-items:center; justify-content:center; background-image:radial-gradient(ellipse at top, #203b53 0%, #09131f 72%); }
+  #game-wrap { width:min(100vw, 900px); padding:10px; position:relative; }
+  header { display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  h1 { font-size:clamp(16px,4vw,24px); margin:0; color:#ffe29a; text-shadow:2px 2px #18283d,0 0 12px #f6c96955; letter-spacing:1px; }
+  #stats { font-size:12px; line-height:1.7; }
+  canvas { width:100%; aspect-ratio: 16 / 10; display:block; border:3px solid #e7bd68; border-radius:7px; background:#5b8d39; box-shadow:0 0 0 2px #122338, 0 10px 28px #000b, inset 0 0 0 1px #fff3; image-rendering:pixelated; image-rendering:crisp-edges; touch-action:none; }
+  #message { min-height:28px; padding:8px 10px; background:linear-gradient(110deg,#203b51,#172638); margin-top:7px; font-size:12px; border:1px solid #6da5b9; border-left:3px solid #f6c969; border-radius:5px; box-shadow:0 4px 12px #0005; }
+  .controls { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:10px; }
+  #joystick { width:112px; height:112px; flex:0 0 112px; position:relative; border:3px solid #c5a267; border-radius:50%; background:radial-gradient(circle,#344c43 0%,#1c302a 70%,#101d19 100%); box-shadow:inset 0 0 0 3px #18221d,0 4px 8px #0008; touch-action:none; user-select:none; }
+  #joystick::before { content:""; position:absolute; inset:22px; border:1px dashed #a9b89b; border-radius:50%; opacity:.7; }
+  #joystick-stick { position:absolute; width:44px; height:44px; left:31px; top:31px; border:3px solid #f2d28d; border-radius:50%; background:linear-gradient(#bca16b,#6e5636); box-shadow:0 3px 6px #0009; pointer-events:none; }
+  .pad { display:none; }
+  button { font: bold 14px system-ui,monospace; color:#fff5d8; background:linear-gradient(#31556a,#1b3448); border:1px solid #83b5c4; border-bottom:3px solid #122637; border-radius:8px; min-height:38px; touch-action:manipulation; box-shadow:0 3px 8px #0004; }
+  button:active { transform:translateY(2px); border-bottom-width:2px; background:#8b7048; }
+  .pad button { font-size:18px; }
+  .pad .up { grid-column:2; } .pad .left { grid-column:1; grid-row:2; } .pad .down { grid-column:2; grid-row:2; } .pad .right { grid-column:3; grid-row:2; }
+  .actions { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+  .actions button { padding:0 13px; min-width:74px; }
+  small { color:#b8c3cc; display:block; margin-top:8px; font-size:11px; line-height:1.5; }
+  @media (min-width:650px) { .pad { grid-template-columns:repeat(3,52px); grid-template-rows:repeat(2,46px); } }
+  #start-screen { position:fixed; inset:0; z-index:20; overflow-y:auto; display:flex; align-items:center; justify-content:center; padding:18px; background:radial-gradient(ellipse at 50% 0%,#276b70 0%,#102c3c 48%,#07151f 100%); }
+  .start-card { width:min(100%,480px); border:1px solid #4c9291; border-radius:22px; padding:22px; background:linear-gradient(150deg,#153e49f5,#102a39f5); box-shadow:0 22px 70px #0009; }
+  .brand-kicker { color:#74e2cb; font-size:10px; letter-spacing:3px; font-weight:bold; text-align:center; }
+  .start-title { color:#fff1bd; text-align:center; font-size:clamp(25px,7vw,38px); letter-spacing:1px; margin:7px 0 4px; text-shadow:0 3px #a34f37; }
+  .start-subtitle { text-align:center; color:#afcbd3; font-size:12px; margin:0 0 17px; }
+  .creation-preview { display:flex; justify-content:center; align-items:center; min-height:132px; border:1px solid #3b737a; border-radius:16px; background:radial-gradient(circle at center,#24606a,#112f40 72%); margin-bottom:16px; position:relative; }
+  #preview { width:128px; height:128px; image-rendering:pixelated; }
+  .preview-label { position:absolute; bottom:8px; right:10px; font-size:9px; color:#8fc9ca; letter-spacing:1px; }
+  .field-label { display:block; color:#e5f1e8; font-size:11px; margin:12px 0 7px; font-weight:bold; letter-spacing:.5px; }
+  #hero-name { width:100%; border:1px solid #467a83; border-radius:10px; background:#0a202d; color:#fff5d2; padding:12px; font:14px monospace; outline:none; }
+  .choice-row { display:flex; gap:9px; flex-wrap:wrap; }
+  .swatch { width:38px; height:38px; min-height:38px; min-width:38px; border:2px solid #8aaeb2; border-radius:50%; padding:0; box-shadow:inset 0 0 0 3px #102b38; }
+  .swatch.selected { border:3px solid #ffe58a; box-shadow:0 0 0 2px #4acdb8; }
+  .style-choice { flex:1; min-width:75px; border-radius:10px; padding:10px 7px; font-size:11px; }
+  .style-choice.selected { background:linear-gradient(#d7ad4b,#9e6b2c); color:#152b30; border-color:#ffe58a; }
+  #start-adventure { width:100%; min-height:48px; margin-top:19px; border:0; border-radius:12px; color:#112b30; background:linear-gradient(135deg,#9af0ce,#50c5a9); font-size:14px; letter-spacing:1px; box-shadow:0 5px 0 #237c71; }
+  #start-adventure:active { transform:translateY(3px); box-shadow:0 2px 0 #237c71; }
+  .start-foot { text-align:center; font-size:10px; color:#8eb2bd; line-height:1.5; margin:14px 0 0; }
+  #edit-hero { padding:0 10px; min-width:0; font-size:11px; min-height:30px; }
+  #minimap-panel { position:absolute; z-index:8; top:64px; left:14px; margin:0; padding:4px; border:2px solid #526274; border-radius:8px; background:#172631eF; display:flex; align-items:flex-start; gap:5px; box-shadow:0 2px 8px #0008; }
+  #minimap { width:84px; height:84px; image-rendering:pixelated; border:2px solid #a98a55; border-radius:4px; background:#3f873d; flex-shrink:0; cursor:crosshair; touch-action:manipulation; }
+  #minimap:focus-visible { outline:3px solid #ffe45e; outline-offset:2px; }
+  #minimap-help { color:#a8c8c1; font-size:8px; margin-top:3px; }
+  #minimap-info { color:#d8e8df; font-size:9px; line-height:1.45; max-width:105px; }
+  #minimap-info strong { color:#ffe18a; font-size:10px; }
+  #landscape-btn { padding:0 9px; min-height:30px; font-size:10px; white-space:nowrap; }
+  @media screen and (orientation:landscape) and (max-height:600px) {
+    body { min-height:100dvh; align-items:flex-start; justify-content:flex-start; }
+    #game-wrap { width:100vw; max-width:none; padding:4px; display:grid; grid-template-columns:minmax(0,1fr) minmax(185px,25vw); grid-template-areas:"head head" "game game" "message message" "stats controls" "features controls"; gap:4px 8px; align-items:start; }
+    header { grid-area:head; margin:0; gap:5px; flex-wrap:nowrap; }
+    h1 { font-size:clamp(14px,3vw,20px); }
+    #stats { font-size:10px; line-height:1.35; }
+    #game { grid-area:game; width:100%; height:min(57dvh, calc(100dvh - 105px)); min-height:125px; aspect-ratio:auto; }
+    #minimap-panel { top:42px; left:8px; margin:0; padding:3px; gap:4px; max-width:180px; }
+    #minimap { width:clamp(54px,11vh,76px); height:clamp(54px,11vh,76px); }
+    #minimap-info { font-size:8px; line-height:1.3; max-width:82px; }
+    #minimap-info strong { font-size:9px; }
+    #message { grid-area:message; margin:0; min-height:0; padding:4px 6px; font-size:10px; }
+    #extra-stats { grid-area:stats; margin:0 !important; padding:4px !important; font-size:10px !important; line-height:1.4 !important; }
+    .feature-buttons { grid-area:features; margin:0; gap:4px; }
+    .feature-buttons button { min-width:0; padding:4px; font-size:10px; }
+    .controls { grid-area:controls; margin:0; flex-direction:column; align-items:stretch; gap:5px; }
+    #joystick { width:88px; height:88px; flex-basis:88px; align-self:center; }
+    #joystick-stick { width:36px; height:36px; left:23px; top:23px; }
+    #joystick::before { inset:17px; }
+    .actions { justify-content:stretch; gap:4px; }
+    .actions button { flex:1 1 40%; min-width:0; min-height:29px; padding:3px; font-size:10px; }
+    small { font-size:9px; margin-top:3px; }
+  }
+
+  .feature-buttons { display:flex; gap:7px; flex-wrap:wrap; margin-top:8px; }
+  .feature-buttons button { flex:1; min-width:135px; }
+  .modal { position:fixed; inset:0; z-index:30; background:#03121deF; display:none; align-items:center; justify-content:center; padding:14px; overflow-y:auto; }
+  .modal.open { display:flex; }
+  .modal-card { width:min(100%,440px); max-height:92vh; overflow:auto; border:2px solid #c7a36b; border-radius:16px; padding:15px; background:linear-gradient(150deg,#55432f,#2e241a); box-shadow:0 16px 60px #000b; }
+  .modal-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .modal-head h2 { margin:0; color:#ffe78a; font-size:20px; }
+  .close-modal { min-width:42px; padding:0 10px; }
+  .bag-meta { color:#b7d4d8; font-size:11px; margin:0 0 12px; line-height:1.6; }
+  #bag-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+  .bag-slot { min-width:0; aspect-ratio:1/1; position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:4px; border:2px solid #456875; border-radius:9px; background:linear-gradient(#173441,#102632); color:#eaf6e9; font-size:10px; overflow:hidden; }
+  .bag-slot .item-icon { font-size:24px; line-height:1.1; }
+  .bag-slot .item-name { font-size:9px; color:#c6e0dd; }
+  .bag-slot .item-qty { position:absolute; right:4px; bottom:3px; font-size:10px; color:#fff0a3; font-weight:bold; }
+  .bag-slot.selected { border-color:#ffe17c; box-shadow:0 0 0 2px #3dcbb2; background:#245b5d; }
+  .bag-slot.empty { border-style:dashed; color:#62818a; }
+  .bag-help { font-size:11px; line-height:1.5; color:#aac7ce; margin:11px 0 0; }
+  .update-entry { padding:11px 0; border-bottom:1px solid #315764; }
+  .update-entry:last-child { border-bottom:0; }
+  .update-version { color:#8be7c7; font-size:12px; font-weight:bold; }
+  .update-date { color:#7fa6b2; font-size:10px; margin-left:7px; }
+  .update-entry p { color:#e2eff0; font-size:12px; line-height:1.6; margin:7px 0 0; }
+  .update-entry ul { padding-left:18px; color:#c4d9de; font-size:11px; line-height:1.7; margin:6px 0 0; }
+  @media (max-width:380px) { .modal-card { padding:11px; } .bag-slot .item-icon { font-size:21px; } }
+
+</style>
+</head>
+<body>
+<div id="start-screen" role="dialog" aria-label="Criação de personagem">
+  <section class="start-card">
+    <div class="brand-kicker">SUA LENDA COMEÇA AQUI</div>
+    <h2 class="start-title">REINO PIXEL</h2>
+    <p class="start-subtitle">Crie seu herói antes de explorar o reino</p>
+    <div class="creation-preview"><canvas id="preview" width="64" height="64" aria-label="Prévia do personagem"></canvas><span class="preview-label">PRÉVIA DO HERÓI</span></div>
+    <label class="field-label" for="hero-name">NOME DO PERSONAGEM</label>
+    <input id="hero-name" maxlength="16" value="Aventureiro" placeholder="Digite seu nome" autocomplete="off">
+    <span class="field-label">TOM DE PELE</span><div class="choice-row" id="skin-choices"></div>
+    <span class="field-label">CABELO</span><div class="choice-row" id="hair-choices"></div>
+    <span class="field-label">ROUPA</span><div class="choice-row" id="outfit-choices"></div>
+    <span class="field-label">RAÇA</span><div class="choice-row" id="race-choices">
+      <button type="button" class="style-choice selected" data-race="humano">🧑 Humano</button>
+      <button type="button" class="style-choice" data-race="anjo">😇 Anjo</button>
+      <button type="button" class="style-choice" data-race="demonio">😈 Demônio</button>
+      <button type="button" class="style-choice" data-race="lobo">🐺 Lobo</button>
+      <button type="button" class="style-choice" data-race="elfo">🧝 Elfo</button>
+      <button type="button" class="style-choice" data-race="anao">⛏️ Anão</button>
+      <button type="button" class="style-choice" data-race="morto">💀 Morto-vivo</button>
+    </div><p id="race-bonus" class="start-foot">🧑 Humano — Equilíbrio: sem penalidades</p>
+    <span class="field-label">CLASSE</span><div class="choice-row" id="class-choices">
+      <button type="button" class="style-choice selected" data-class="guerreiro">⚔ Guerreiro</button>
+      <button type="button" class="style-choice" data-class="mago">✦ Mago</button>
+      <button type="button" class="style-choice" data-class="arqueiro">➶ Arqueiro</button>
+    </div>
+    <button id="start-adventure" type="button">COMEÇAR A AVENTURA →</button>
+    <p class="start-foot">Você poderá mudar a aparência depois. Sua aventura aguarda na vila.</p>
+  </section>
+</div>
+<div id="game-wrap">
+  <header>
+    <h1>REINO PIXEL</h1>
+    <div style="display:flex;align-items:center;gap:6px"><button id="landscape-btn" type="button" aria-label="Ativar tela deitada">↻ TELA DEITADA</button><button id="edit-hero" type="button">✦ PERSONAGEM</button><div id="stats">❤️ Vida: <span id="hp">5</span> &nbsp; ⭐ Nível: <span id="level">1</span><br>🪙 Moedas: <span id="coins">0</span> &nbsp; XP: <span id="xp">0</span></div></div>
+  </header>
+  <canvas id="game" width="320" height="200" aria-label="Jogo RPG pixelado"></canvas>
+  <section id="minimap-panel" aria-label="Minimapa do mundo">
+    <canvas id="minimap" width="120" height="120" tabindex="0" role="button" aria-label="Minimapa interativo. Toque em um local para caminhar até lá"></canvas>
+    <div id="minimap-info"><strong>🗺️ MINIMAPA</strong><br>🟡 Você está aqui<br>🟦 Água e rios<br>🟩 Campos e florestas<br>🟥 Monstros<br><span id="map-position">Posição: --, --</span><div id="minimap-help">Toque no mapa para marcar destino.</div></div>
+  </section>
+  <div id="message">Explore o mundo! Encontre baús, pegue moedas e derrote monstros.</div>
+  <div id="extra-stats" style="font-size:12px;line-height:1.7;background:#202b38;border:2px solid #526274;padding:7px;margin-top:7px;">
+    🎒 Inventário: <span id="inventory">Poções: 1 | Chaves: 0</span><br>
+    📜 Missão: <span id="quest">Fale com o Ancião na vila.</span>
+  </div>
+  <div class="feature-buttons">
+    <button id="open-bag" type="button">🎒 MOCHILA (16)</button>
+    <button id="open-updates" type="button">📣 ATUALIZAÇÕES</button>
+  </div>
+  <div class="controls">
+    <div id="joystick" role="application" aria-label="Analógico virtual para movimentar o personagem"><div id="joystick-stick"></div></div>
+    <div class="actions">
+      <button id="attack">⚔ ATACAR</button>
+      <button id="heal">✚ CURAR (3🪙)</button>
+      <button id="potion">🧪 POÇÃO</button>
+      <button id="talk">💬 FALAR</button>
+      <button id="save">💾 SALVAR</button>
+      <button id="load">📂 CARREGAR</button>
+    </div>
+  </div>
+  <small>PC: WASD/setas para andar, Espaço para atacar, E para falar. No celular, use o analógico à esquerda e os botões de ação. Fale com o Ancião, explore casas, colete chaves e prepare-se para o Chefe das Ruínas!</small>
+</div>
+
+<div id="inventory-modal" class="modal" role="dialog" aria-modal="true" aria-label="Mochila">
+  <section class="modal-card">
+    <div class="modal-head"><h2>🎒 Mochila do herói</h2><button class="close-modal" data-close="inventory-modal" type="button" aria-label="Fechar mochila">✕</button></div>
+    <p class="bag-meta">16 espaços · Poções e chaves podem ser organizadas. Toque em um item e depois no espaço de destino para mover ou trocar.</p>
+    <div id="bag-grid" aria-label="16 espaços da mochila"></div>
+    <p class="bag-help" id="bag-help">Selecione um item para organizar a mochila.</p>
+  </section>
+</div>
+<div id="updates-modal" class="modal" role="dialog" aria-modal="true" aria-label="Quadro de atualizações">
+  <section class="modal-card">
+    <div class="modal-head"><h2>📣 Quadro de atualizações</h2><button class="close-modal" data-close="updates-modal" type="button" aria-label="Fechar atualizações">✕</button></div>
+    <div class="update-entry"><span class="update-version">VERSÃO 0.5.0</span><span class="update-date">NOVA</span><p>Raças selecionáveis e bônus próprios, combináveis com as três classes</p><ul><li>Humano, Anjo, Demônio, Lobo, Elfo, Anão e Morto-vivo.</li><li>Cada raça tem um bônus e detalhes visuais na prévia do personagem.</li><li>As raças podem ser combinadas com Guerreiro, Mago ou Arqueiro.</li><li>Guerreiro: golpe de espada com arco dourado e alcance curto.</li><li>Arqueiro: flecha animada em linha reta e alcance longo.</li><li>Mago: orbe mágico violeta com partículas e alcance médio.</li><li>Herói com animação de caminhada e movimento dos braços e pernas.</li><li>Direção do personagem acompanha o movimento.</li><li>Ancião e Mercador com aparências próprias, detalhes de função e animação suave de descanso.</li><li>Monstros e chefe com movimento animado para deixar o mundo mais vivo.</li></ul></div>
+    <div class="update-entry"><span class="update-version">VERSÃO 0.2.0</span><span class="update-date">ATUAL</span><p>Novidades do Reino Pixel RPG</p><ul><li>Mochila com 16 espaços.</li><li>Organização de itens por toque: selecione e mova/troque de espaço.</li><li>Poções e chaves aparecem na mochila; quantidades são empilhadas.</li><li>Quadro de atualizações dentro do jogo.</li><li>Salvamento agora guarda também a organização da mochila.</li></ul></div>
+    <div class="update-entry"><span class="update-version">VERSÃO 0.1.0</span><p>Primeira aventura</p><ul><li>Criação e personalização do herói.</li><li>Exploração, vila, NPCs, monstros, baús e missões.</li><li>Níveis, moedas, poções e batalha contra o chefe.</li></ul></div>
+    <div class="update-entry"><span class="update-version">📖 A GRANDE SAGA DE ELDORIA</span>
+<p><b>Prólogo — A marca que não deveria existir.</b> Você desperta numa casa simples da Vila de Aurora, sob uma chuva de estrelas verdes. Não se lembra de sua infância; só reconhece uma marca luminosa no braço e escuta, em sonhos, sete vozes chamando seu nome. Um viajante encapuzado entrega um fragmento que pulsa quando criaturas sombrias se aproximam. Antes de sumir, ele sussurra: “Não confie na primeira história que contarem sobre os Guardiões.” Na mesma noite, sinos tocam, animais fogem da floresta e Aurora é atacada. O Ancião pede ajuda, mas esconde que conhece o símbolo gravado na pele do herói.</p>
+<p><b>Capítulo 1 — O Despertar em Aurora.</b> Aprenda a sobreviver, ajude os aldeões, recolha suprimentos e descubra marcas estranhas perto dos poços. Ao derrotar o Guardião das Ruínas, você percebe que ele não protegia um tesouro: tentava impedir que algo atravessasse uma fenda. Um eco chama o protagonista de “oitavo juramento”, embora as lendas falem apenas de sete guardiões.</p>
+<p><b>Capítulo 2 — A Floresta que se lembra.</b> Trilhas mudam durante a noite, árvores sussurram nomes esquecidos e uma ponte aparece apenas quando o fragmento é levado até uma pedra coberta de musgo. A exploradora Maelis procura o irmão desaparecido; o ferreiro Borun reconhece o metal de uma chave impossível; e uma raposa branca conduz o herói a um santuário escondido. Nas ruínas, inscrições revelam que a floresta guarda memórias de pessoas apagadas da história. O primeiro artefato, a Lágrima Verde, permite ouvir as lembranças de lugares antigos.</p>
+<p><b>Capítulo 3 — Os Reinos em Guerra.</b> O reino humano de Valedouro culpa os elfos de Sylvaran pelo surgimento das criaturas. Os anões de Pedrafunda fecharam suas minas depois de escutarem batidas vindas de baixo da própria montanha. Nos portos, marinheiros juram ter visto uma ilha que não existe nos mapas. O jogador pode negociar, investigar ou tomar partido; cada escolha altera quem oferece ajuda, quais mercadores aparecem e quais caminhos ficam seguros. Descobre-se que alguém está alimentando a guerra para impedir que os povos se unam outra vez.</p>
+<p><b>Capítulo 4 — O Reino das Sombras.</b> Sob um castelo abandonado existe uma cidade refletida, onde tochas queimam com chama escura e os habitantes não projetam sombras. A guardiã Nymera revela que a marca do protagonista é uma fechadura viva. O viajante encapuzado reaparece e confessa ter participado do ritual que apagou a memória do herói. Ele não sabe se salvou uma criança ou criou uma arma. Para atravessar as masmorras, será preciso resolver enigmas, libertar prisioneiros e derrotar chefes cujas histórias se conectam aos NPCs encontrados anteriormente.</p>
+<p><b>Capítulo 5 — Os Sete Guardiões.</b> Cada guardião representa um juramento: coragem, memória, compaixão, liberdade, verdade, equilíbrio e esperança. Alguns viraram monstros; outros escondem-se entre pessoas comuns; um deles pode estar ajudando o vilão. Os artefatos não são simples chaves: cada um mostra uma versão diferente do passado. Ao reuni-los, o herói descobre que os guardiões não destruíram o Coração do Caos — dividiram seu poder e prometeram vigiar uns aos outros. A paz foi construída sobre uma mentira, e revelar a verdade pode provocar uma nova guerra.</p>
+<p><b>Capítulo 6 — O Coração do Caos.</b> No centro da região proibida existe uma cidade suspensa sobre um abismo de luz. O antagonista, chamado Rei Sem Aurora, acredita que pode acabar com todo sofrimento removendo a liberdade de escolha. A batalha final muda conforme alianças, segredos descobertos e personagens salvos. <b>Final da Aurora:</b> devolver o poder aos povos e reconstruir os reinos. <b>Final do Soberano:</b> assumir o controle do Coração e impor uma paz frágil. <b>Final do Véu:</b> quebrar o selo e libertar uma força desconhecida, alterando o mundo e abrindo um novo ciclo de aventuras. Nenhum final apaga a exploração: sobreviventes, ruínas e consequências permanecem para serem descobertos.</p>
+<p><b>Missões secretas — As páginas que faltam.</b> Um livro sem título surge na biblioteca somente depois que o jogador encontra três símbolos escondidos. A missão “O Sino Debaixo do Lago” começa ao tocar numa pedra junto à água durante a chuva; “O Nome do Viajante” exige ouvir três rumores em cidades diferentes; “A Porta sem Parede” aparece perto de ruínas quando o herói carrega uma chave sem gastar; “A Raposa de Sete Caudas” leva a um santuário se o jogador seguir suas pegadas sem atacar criaturas; “O Ferreiro que Não Envelhece” revela uma receita lendária após entregar minérios raros; “A Oitava Estátua” só pode ser vista depois de reunir os sete artefatos. Essas pistas devem ser encontradas explorando, conversando e observando o ambiente, não apenas seguindo marcadores.</p>
+<p><b>Depois da campanha — O mundo sem fim.</b> Os quadros de aventureiros podem oferecer contratos repetíveis: caçar criaturas, proteger caravanas, recuperar relíquias, mapear cavernas, escoltar NPCs e enfrentar versões mais fortes de chefes. A cada sequência concluída, o contrato ganha uma dificuldade, recompensas e modificadores diferentes. Fendas do Caos, masmorras com salas embaralhadas, caçadas semanais, tesouros escondidos e eventos de invasão mantêm o mundo em movimento. Contratos raros podem revelar pedaços de histórias antigas e personagens novos. A jornada não precisa acabar quando os créditos aparecem: sempre haverá uma trilha por explorar, uma lenda por verificar ou uma missão secreta esperando por quem prestar atenção.</p>
+<p><b>Nota de implementação:</b> este arquivo contém a narrativa ampliada e os conceitos de missões secretas e repetíveis; as missões avançadas, áreas novas, decisões com consequências e geração infinita real ainda precisam de programação própria para funcionarem como sistemas jogáveis.</p></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const W = canvas.width, H = canvas.height, TILE = 16;
+  const MAP_W = 90, MAP_H = 90;
+  const player = {x: MAP_W*TILE/2, y: MAP_H*TILE/2, hp:5, maxHp:5, coins:0, xp:0, level:1, face:'down', attack:0, invuln:0, name:'Aventureiro'};
+  const appearance = {skin:'#ffbd79', hair:'#f2b52e', outfit:'#4b3428', pants:'#49301f', style:'guerreiro', race:'humano'};
+  const raceInfo = {humano:{name:'Humano',icon:'🧑',bonus:'Equilíbrio: sem penalidades',hp:0,speed:1}, anjo:{name:'Anjo',icon:'😇',bonus:'+2 de vida máxima',hp:2,speed:1}, demonio:{name:'Demônio',icon:'😈',bonus:'+1 de dano mágico (Mago)',hp:0,speed:1}, lobo:{name:'Lobo',icon:'🐺',bonus:'Movimento mais rápido',hp:0,speed:1.25}, elfo:{name:'Elfo',icon:'🧝',bonus:'+1 de alcance (Arqueiro)',hp:0,speed:1}, anao:{name:'Anão',icon:'⛏️',bonus:'+1 de vida máxima',hp:1,speed:0.9}, morto:{name:'Morto-vivo',icon:'💀',bonus:'Resistência: +1 de vida máxima',hp:1,speed:1}};
+  let raceBonusApplied = false;
+  let gameStarted = false;
+  let animationTick = 0;
+  let playerMoving = false;
+  const keys = {};
+  let message = 'Explore a Floresta Antiga, atravesse o Rio Cristalino e descubra as Ruínas Rochosas!';
+  let lastMsg = 0;
+  const world = new Map(), enemies = [], treasures = [], npcs = [];
+  const inventory = {potions:1, keys:0};
+  const bagSlots = Array.from({length:16}, () => null);
+  bagSlots[0] = {type:'potion', qty:1};
+  let selectedBagSlot = null;
+  const itemInfo = {potion:{icon:'🧪',name:'Poção'}, key:{icon:'🗝️',name:'Chave'}};
+  function syncInventoryCounts() { inventory.potions=0; inventory.keys=0; for(const slot of bagSlots) if(slot) inventory[slot.type==='potion'?'potions':'keys'] += slot.qty; }
+  function addItem(type, qty=1) { for(let n=0;n<qty;n++) { let slot=bagSlots.find(s=>s&&s.type===type); if(slot) slot.qty++; else { const empty=bagSlots.findIndex(s=>!s); if(empty<0) { say('Mochila cheia! Não foi possível guardar '+itemInfo[type].name+'.'); return false; } bagSlots[empty]={type,qty:1}; } } syncInventoryCounts(); renderBag(); return true; }
+  function removeItem(type, qty=1) { for(let n=0;n<qty;n++) { const i=bagSlots.findIndex(s=>s&&s.type===type); if(i<0) return false; bagSlots[i].qty--; if(bagSlots[i].qty<=0) bagSlots[i]=null; } syncInventoryCounts(); renderBag(); return true; }
+  function renderBag() { const grid=document.getElementById('bag-grid'); if(!grid) return; grid.innerHTML=''; bagSlots.forEach((slot,i)=>{ const b=document.createElement('button'); b.type='button'; b.className='bag-slot'+(!slot?' empty':'')+(selectedBagSlot===i?' selected':''); b.setAttribute('aria-label',slot?`${itemInfo[slot.type].name}, quantidade ${slot.qty}, espaço ${i+1}`:`Espaço vazio ${i+1}`); if(slot) b.innerHTML=`<span class="item-icon">${itemInfo[slot.type].icon}</span><span class="item-name">${itemInfo[slot.type].name}</span><span class="item-qty">${slot.qty}</span>`; else b.innerHTML=`<span class="item-icon">＋</span><span class="item-name">Vazio</span>`; b.addEventListener('click',()=>{ if(selectedBagSlot===null) { if(!bagSlots[i]) { document.getElementById('bag-help').textContent='Esse espaço está vazio. Selecione um item primeiro.'; return; } selectedBagSlot=i; document.getElementById('bag-help').textContent='Item selecionado. Agora toque no espaço de destino.'; } else if(selectedBagSlot===i) { selectedBagSlot=null; document.getElementById('bag-help').textContent='Seleção cancelada.'; } else { const tmp=bagSlots[i]; bagSlots[i]=bagSlots[selectedBagSlot]; bagSlots[selectedBagSlot]=tmp; selectedBagSlot=null; syncInventoryCounts(); document.getElementById('bag-help').textContent='Mochila organizada!'; saveBagOnly(); } renderBag(); }); grid.appendChild(b); }); }
+  function saveBagOnly() { try { const raw=localStorage.getItem('reinoPixelSave'); if(raw) { const d=JSON.parse(raw); d.bagSlots=bagSlots; d.inventory={...inventory}; localStorage.setItem('reinoPixelSave',JSON.stringify(d)); } } catch(e) {} }
+  let quest = 0, boss = null, bossSpawned = false;
+  const village = {x:Math.floor(MAP_W/2), y:Math.floor(MAP_H/2)};
+  // Área inicial vira uma pequena vila segura.
+  
+  const key = (x,y) => `${x},${y}`;
+  // Mundo gerado de forma consistente: árvores, pedras e lagos ficam no mesmo lugar.
+  function hash(x,y) { let n = (x*374761393 + y*668265263) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967295; }
+  function tileAt(tx,ty) {
+    if(tx<0||ty<0||tx>=MAP_W||ty>=MAP_H) return 'water';
+    const k=key(tx,ty);
+    if(world.has(k)) return world.get(k);
+    let t='grass', r=hash(tx,ty);
+    const nearStart = Math.abs(tx-MAP_W/2)<8 && Math.abs(ty-MAP_H/2)<8;
+    // Biomas: floresta ao oeste, campo florido ao sul e região rochosa a nordeste.
+    const forest = tx<23 && ty>12 && ty<MAP_H-10;
+    const rocky = tx>MAP_W-25 && ty<28;
+    const meadow = ty>MAP_H-24 && tx>20 && tx<MAP_W-15;
+    // Um rio sinuoso cruza o mundo, com algumas pontes de terra.
+    const riverX = 36 + Math.floor(5*Math.sin(ty/9));
+    const river = Math.abs(tx-riverX)<=1 && ty>7 && ty<MAP_H-7 && !(ty>42&&ty<46);
+    if(!nearStart) {
+      if(river) t='water';
+      else if(forest && r<0.44) t='tree';
+      else if(rocky && r<0.30) t='rock';
+      else if(meadow && r<0.28) t='flower';
+      else if(r<0.045) t='water';
+      else if(r<0.105) t='tree';
+      else if(r<0.125) t='rock';
+      else if(r<0.19) t='flower';
+      if(rocky && r>0.48 && r<0.56) t='cave';
+    }
+    world.set(k,t); return t;
+  }
+  function blocked(x,y) {
+    const tx=Math.floor(x/TILE), ty=Math.floor(y/TILE);
+    const solid = t => ['water','tree','rock','house'].includes(t);
+    return solid(tileAt(tx,ty)) ||
+           solid(tileAt(Math.floor((x+7)/TILE),ty)) ||
+           solid(tileAt(tx,Math.floor((y+7)/TILE)));
+  }
+  function say(s) { message=s; document.getElementById('message').textContent=s; lastMsg=Date.now(); }
+  function addEnemy(tx,ty) { const kinds=['slime','goblin','skeleton','wolf']; const kind=kinds[Math.abs((tx*7+ty*13)%kinds.length)]; enemies.push({x:tx*TILE+4,y:ty*TILE+4,hp:2,alive:true,step:0,type:kind}); }
+  function addTreasure(tx,ty,type) { treasures.push({x:tx*TILE+4,y:ty*TILE+4,type,alive:true}); }
+  // Garantir áreas de chão ao redor do início.
+  for(let y=MAP_H/2-6;y<=MAP_H/2+6;y++) for(let x=MAP_W/2-7;x<=MAP_W/2+7;x++) world.set(key(x,y),'grass');
+  // Caminho de terra e construções decorativas na vila.
+  for(let x=MAP_W/2-7;x<=MAP_W/2+7;x++) world.set(key(x,MAP_H/2+2),'path');
+  npcs.push({x:(village.x-3)*TILE+8,y:(village.y-2)*TILE+8,type:'elder',name:'Ancião'});
+  npcs.push({x:(village.x+3)*TILE+8,y:(village.y-2)*TILE+8,type:'merchant',name:'Mercador'});
+  // Casas fixas próximas à vila.
+  world.set(key(village.x-5,village.y+1),'house');
+  world.set(key(village.x-4,village.y+1),'house');
+  world.set(key(village.x+5,village.y+1),'house');
+  world.set(key(village.x+6,village.y+1),'house');
+  for(let i=0;i<62;i++) {
+    let x=3+Math.floor(hash(i,7)* (MAP_W-6)), y=3+Math.floor(hash(i,19)*(MAP_H-6));
+    if(Math.abs(x-MAP_W/2)<7&&Math.abs(y-MAP_H/2)<7) continue;
+    if(!['water','tree','rock'].includes(tileAt(x,y))) addEnemy(x,y);
+  }
+  for(let i=0;i<48;i++) {
+    let x=2+Math.floor(hash(i,31)*(MAP_W-4)), y=2+Math.floor(hash(i,43)*(MAP_H-4));
+    if(Math.abs(x-MAP_W/2)<6&&Math.abs(y-MAP_H/2)<6) continue;
+    if(!['water','tree','rock'].includes(tileAt(x,y))) addTreasure(x,y, i%4===0?'chest':'coin');
+  }
+  function updateStats() {
+    document.getElementById('hp').textContent=player.hp+'/'+player.maxHp;
+    document.getElementById('level').textContent=player.level;
+    document.getElementById('coins').textContent=player.coins;
+    document.getElementById('xp').textContent=player.xp;
+    syncInventoryCounts();
+    document.getElementById('inventory').textContent=`Poções: ${inventory.potions} | Chaves: ${inventory.keys} | Mochila: 16 espaços`;
+    renderBag();
+    autoSave();
+    const quests=['Prólogo — Fale com o Ancião na Vila de Aurora.','Capítulo 1 — Derrote 3 monstros para proteger Aurora.','Capítulo 1 — Encontre uma chave dourada em um baú.','Capítulo 1 — Vá às Ruínas no nordeste e derrote o Guardião.','Capítulo 1 — Volte à vila e fale com o Ancião.','Capítulo 2 — Investigue a corrupção: derrote 3 monstros.','Capítulo 2 — Volte ao Ancião com as notícias.','Prólogo concluído! A Floresta Perdida aguarda novas aventuras.'];
+    document.getElementById('quest').textContent=quest===5 ? `Investigue a corrupção: ${player.monsterKills||0}/3 monstros.` : quests[Math.min(quest,7)];
+  }
+  function move(dx,dy) {
+    if(player.hp<=0) return;
+    const oldX=player.x, oldY=player.y;
+    if(dx) player.face=dx>0?'right':'left';
+    if(dy) player.face=dy>0?'down':'up';
+    const speed=2.2;
+    if(!blocked(player.x+dx*speed,player.y)) player.x+=dx*speed;
+    if(!blocked(player.x,player.y+dy*speed)) player.y+=dy*speed;
+    if(player.x!==oldX || player.y!==oldY) playerMoving=true;
+    for(const t of treasures) {
+      if(t.alive && Math.hypot(player.x-t.x,player.y-t.y)<12) {
+        t.alive=false;
+        if(t.type==='chest') {
+          player.coins+=5; player.xp+=2;
+          if(Math.random()<0.55) { if(addItem('key')) say('Baú encontrado! +5 moedas, +2 XP e uma chave!'); }
+          else { if(addItem('potion')) say('Baú encontrado! +5 moedas, +2 XP e uma poção!'); }
+        } else { player.coins++; say('Você pegou uma moeda!'); }
+        levelCheck(); updateStats();
+      }
+    }
+    for(const e of enemies) if(e.alive && Math.hypot(player.x-e.x,player.y-e.y)<12 && player.invuln<=0) {
+      player.hp--; player.invuln=55; say('Um monstro te acertou! -1 vida.'); updateStats();
+      if(player.hp<=0) say('Você foi derrotado! Aperte RECOMEÇAR para tentar de novo.');
+    }
+  }
+  function levelCheck() {
+    while(player.xp>=player.level*5) { player.xp-=player.level*5; player.level++; player.maxHp++; player.hp=player.maxHp; say('Subiu de nível! Vida restaurada.'); }
+  }
+  function doAttack() {
+    if(player.hp<=0) return;
+    // Cada classe tem uma animação e alcance próprios.
+    player.attack=12;
+    player.attackClass=appearance.style;
+    player.attackFace=player.face;
+    let hit=false;
+    const cls=appearance.style;
+    const range=cls==='arqueiro'?78:cls==='mago'?58:27;
+    for(const e of enemies) {
+      if(!e.alive) continue;
+      const dx=e.x-player.x, dy=e.y-player.y, d=Math.hypot(dx,dy);
+      const facing = player.face==='left'?dx<0:player.face==='right'?dx>0:player.face==='up'?dy<0:dy>0;
+      const aligned = player.face==='left'||player.face==='right' ? Math.abs(dy)<19 : Math.abs(dx)<19;
+      if(d<range && facing && (cls==='guerreiro' || aligned)) {
+        e.hp--; hit=true;
+        if(e.hp<=0) {
+          e.alive=false; player.xp+=2; player.coins++; levelCheck();
+          if(quest===1 || quest===5) {
+            player.monsterKills=(player.monsterKills||0)+1;
+            if(player.monsterKills>=3 && quest===1) { quest=2; say('Monstro derrotado! Missão atualizada: encontre uma chave dourada.'); }
+            else if(player.monsterKills>=3 && quest===5) { quest=6; say('Os monstros sombrios foram derrotados. Volte ao Ancião!'); }
+            else say(`Monstro derrotado! Progresso: ${player.monsterKills}/3.`);
+          } else say('Monstro derrotado! +2 XP e +1 moeda.');
+          if(quest===3 && boss && e===boss) { quest=4; say('O Chefe das Ruínas caiu, mas uma energia sombria escapou! Volte à vila e fale com o Ancião.'); }
+        }
+        else say('Acertou o monstro! Ele ainda está de pé.');
+      }
+    }
+    if(!hit) say('Nada ao alcance! Chegue perto de um monstro e ataque.');
+    updateStats();
+  }
+  function heal() {
+    if(player.coins<3) { say('Você precisa de 3 moedas para se curar.'); return; }
+    if(player.hp===player.maxHp) { say('Sua vida já está cheia.'); return; }
+    player.coins-=3; player.hp=Math.min(player.maxHp,player.hp+2); say('Você recuperou até 2 pontos de vida.'); updateStats();
+  }
+  function talk() {
+    if(player.hp<=0) return;
+    const npc=npcs.find(n=>Math.hypot(player.x-n.x,player.y-n.y)<27);
+    if(!npc) { say('Não há ninguém por perto para conversar.'); return; }
+    if(npc.type==='elder') {
+      if(quest===0) { quest=1; player.monsterKills=0; say('Ancião: Derrote 3 monstros para proteger a vila!'); }
+      else if(quest===1) say(`Ancião: Continue! Monstros derrotados: ${player.monsterKills||0}/3.`);
+      else if(quest===2) say('Ancião: Ótimo! Agora encontre uma chave dourada em um baú.');
+      else if(quest===3) say('Ancião: As Ruínas ficam no canto nordeste do mapa. Derrote o Chefe!');
+      else if(quest===4) { quest=5; player.monsterKills=0; say('Ancião: O chefe era apenas um guardião! Uma corrupção se espalha pela Caverna Sombria. Derrote 3 monstros corrompidos e descubra a origem dela.'); }
+      else if(quest===5) say(`Ancião: A corrupção ainda está ativa. Derrote mais monstros sombrios (${player.monsterKills||0}/3).`);
+      else if(quest===6) { quest=7; say('Ancião: Você encontrou a verdade! A energia veio de um portal antigo além do rio. Este é apenas o começo da sua jornada. Novas regiões serão desbloqueadas em futuras aventuras!'); }
+      else say('Ancião: Herói, o portal antigo ainda guarda mistérios. Prepare-se para a próxima aventura!');
+    } else {
+      if(player.coins>=4) { if(addItem('potion')) { player.coins-=4; say('Mercador: Aqui está uma poção por 4 moedas.'); } updateStats(); }
+      else say('Mercador: Vendo poções por 4 moedas. Volte quando tiver dinheiro.');
+    }
+    updateStats();
+  }
+  function usePotion() {
+    if(inventory.potions<=0) { say('Você não tem poções.'); return; }
+    if(player.hp>=player.maxHp) { say('Sua vida já está cheia.'); return; }
+    removeItem('potion'); player.hp=Math.min(player.maxHp,player.hp+3); say('Poção usada! Você recuperou até 3 pontos de vida.'); updateStats();
+  }
+  function spawnBoss() {
+    if(bossSpawned || quest<3) return;
+    // Ruínas no canto nordeste do mapa.
+    const tx=MAP_W-10, ty=8;
+    boss={x:tx*TILE+8,y:ty*TILE+8,hp:12,maxHp:12,alive:true,step:0};
+    enemies.push(boss); bossSpawned=true;
+    say('O Chefe das Ruínas apareceu! Prepare-se para lutar!');
+  }
+  function saveGame(silent=false) {
+    const data={player,appearance,inventory,bagSlots,quest,monsterKills:player.monsterKills||0,raceBonusApplied,enemies:enemies.map(e=>({x:e.x,y:e.y,hp:e.hp,alive:e.alive})),treasures:treasures.map(t=>({alive:t.alive}))};
+    try { localStorage.setItem('reinoPixelSave',JSON.stringify(data)); if(!silent) say('Jogo salvo neste navegador!'); return true; }
+    catch(e) { if(!silent) say('Não foi possível salvar neste navegador.'); return false; }
+  }
+  // Salvamento automático local: guarda o progresso sem interromper a aventura.
+  let lastAutoSave=0;
+  function autoSave() {
+    if(!gameStarted) return;
+    const now=Date.now(); if(now-lastAutoSave<1500) return;
+    if(saveGame(true)) lastAutoSave=now;
+  }
+  setInterval(autoSave,5000);
+  window.addEventListener('beforeunload',autoSave);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden') autoSave();});
+  function loadGame() {
+    try {
+      const raw=localStorage.getItem('reinoPixelSave');
+      if(!raw) { say('Nenhum salvamento encontrado neste navegador.'); return; }
+      const d=JSON.parse(raw); Object.assign(player,d.player); if(d.appearance) Object.assign(appearance,d.appearance); if(typeof d.raceBonusApplied==='boolean') raceBonusApplied=d.raceBonusApplied; if(d.bagSlots && Array.isArray(d.bagSlots)) { d.bagSlots.slice(0,16).forEach((v,i)=>bagSlots[i]=v); } else { bagSlots.fill(null); if(d.inventory?.potions) bagSlots[0]={type:'potion',qty:d.inventory.potions}; if(d.inventory?.keys) bagSlots[1]={type:'key',qty:d.inventory.keys}; } syncInventoryCounts(); quest=d.quest; player.monsterKills=d.monsterKills||0;
+      d.enemies.forEach((e,i)=>{if(enemies[i]) Object.assign(enemies[i],e);});
+      d.treasures.forEach((t,i)=>{if(treasures[i]) treasures[i].alive=t.alive;});
+      updateStats(); say('Progresso carregado!');
+    } catch(e) { say('O salvamento não pôde ser carregado.'); }
+  }
+  function rect(x,y,w,h,c) { ctx.fillStyle=c; ctx.fillRect(Math.round(x),Math.round(y),w,h); }
+  function drawTile(type,x,y,tx,ty) {
+    // Visual inspirado em MMORPGs clássicos de fantasia: tiles compactos,
+    // paleta terrosa, contornos escuros e detalhes manuais em pixel art.
+    const h=hash(tx,ty), h2=hash(tx+13,ty-7);
+    if(type==='grass') {
+      rect(x,y,16,16, h>.72?'#648b3c':h>.35?'#5b8338':'#527b34');
+      if(h>.28){rect(x+2,y+3,2,1,'#88a957');rect(x+10,y+11,2,1,'#3f642c');}
+      if(h2>.72){rect(x+6,y+6,1,2,'#a1b96a');rect(x+7,y+7,2,1,'#a1b96a');}
+      if(h2<.12){rect(x+12,y+3,2,2,'#b0a05b');rect(x+13,y+3,1,1,'#e0c47b');}
+      if(h2>.42){rect(x+3,y+10,2,1,'#a4c76b');rect(x+11,y+4,2,1,'#739b47');}
+      if(h2<.3){rect(x+7,y+12,1,2,'#e0d17b');}
+      rect(x,y,16,1,'#6d9144'); rect(x,y+15,16,1,'#45672d');
+    } else if(type==='water') {
+      rect(x,y,16,16,'#386f9a'); rect(x,y+1,16,2,'#5a94b5');
+      if((tx+ty)%2===0){rect(x+2,y+5,5,1,'#91b8c5');rect(x+9,y+11,4,1,'#719fb7');}
+      else {rect(x+6,y+8,5,1,'#78a9be');rect(x+1,y+13,3,1,'#2b5d87');}
+      if((tx+ty)%3===0){rect(x+3,y+2,4,1,'#b8e9ec');rect(x+4,y+3,2,1,'#8ac7dc');}
+      rect(x,y+15,16,1,'#2d5774');
+    } else if(type==='tree') {
+      // copa com volume, tronco e sombras em camadas
+      rect(x+5,y+8,7,8,'#674326'); rect(x+6,y+9,3,6,'#8b6034');
+      rect(x+1,y+4,14,9,'#294d25'); rect(x+3,y+1,10,10,'#3d672b');
+      rect(x+5,y,7,7,'#527c32'); rect(x+4,y+3,3,2,'#789649');
+      rect(x+10,y+5,3,2,'#668b3a'); rect(x+2,y+8,3,2,'#355a27');
+      rect(x+3,y+12,10,2,'#294523');
+    } else if(type==='rock') {
+      rect(x+3,y+7,11,7,'#55554b'); rect(x+4,y+4,8,7,'#858579');
+      rect(x+6,y+3,5,2,'#aaa995'); rect(x+5,y+7,3,2,'#c0bba1');
+      rect(x+3,y+13,10,2,'#41443d'); rect(x+10,y+8,2,3,'#696b60');
+    } else if(type==='path') {
+      rect(x,y,16,16,'#9a8057'); rect(x,y+1,16,1,'#b39a6b');
+      if(h>.35){rect(x+2,y+5,4,2,'#806846');rect(x+10,y+11,3,2,'#826b49');}
+      if(h2>.66){rect(x+7,y+3,2,1,'#c1a779');rect(x+4,y+13,2,1,'#6f5a3e');}
+      rect(x,y+15,16,1,'#766043');
+    } else if(type==='house') {
+      rect(x+1,y+6,14,10,'#a58b65'); rect(x+2,y+8,12,8,'#c4aa7a');
+      rect(x,y+3,16,5,'#694331'); rect(x+2,y+2,12,3,'#8e5535');
+      rect(x+4,y+4,8,2,'#b66c40'); rect(x+5,y+9,5,7,'#4d3020');
+      rect(x+6,y+10,3,6,'#795034'); rect(x+11,y+9,3,3,'#5d91a2');
+      rect(x+11,y+9,3,1,'#b7d3c8');
+    } else if(type==='cave') {
+      rect(x,y,16,16,'#77776b'); rect(x+1,y+3,14,12,'#4b4a43');
+      rect(x+3,y+5,10,10,'#242622'); rect(x+2,y+3,12,2,'#a3a08a');
+      rect(x+4,y+5,7,1,'#5b5a50'); rect(x+3,y+14,10,1,'#34352f');
+    } else {
+      rect(x,y,16,16, h>.5?'#648b3c':'#5b8338');
+      if(h>.2){rect(x+4,y+4,2,2,'#d8c46a');rect(x+5,y+3,1,1,'#f1dfa0');}
+      if(h2>.6){rect(x+10,y+9,2,2,'#b9a0c7');rect(x+11,y+8,1,1,'#e3d3ed');}
+      rect(x,y+15,16,1,'#45672d');
+    }
+  }
+  function drawCharacter(x,y,color,skin,custom=null,face='down',moving=false,tick=0) {
+    // Herói chibi de fantasia: cabelo em mechas, olhos luminosos, roupa em camadas e sombra.
+    const a=custom || {skin, hair:'#8b4c29', outfit:color, pants:'#493d52', style:'guerreiro'};
+    const phase=moving ? Math.floor(tick/3)%4 : Math.floor(tick/12)%4;
+    const step=moving ? (phase===0?-2:phase===2?2:0) : 0;
+    const bob=moving ? (phase===1||phase===3?-1:0) : Math.sin(tick/13)*0.35;
+    const yy=y+bob, st=a.skin||skin, hair=a.hair||'#8b4c29', cloth=a.outfit||color, pants=a.pants||'#493d52';
+    rect(x-8,y+8,16,3,'#10251f'); rect(x-6,y+9,12,1,'#34503a');
+    // pernas, botas e detalhes dourados
+    rect(x-5+step,yy+5,4,5,pants); rect(x+1-step,yy+5,4,5,pants);
+    rect(x-5+step,yy+9,5,2,'#2a211e'); rect(x+1-step,yy+9,5,2,'#2a211e');
+    rect(x-4+step,yy+9,3,1,'#c59b55'); rect(x+2-step,yy+9,3,1,'#c59b55');
+    // braços com luvas e ombreiras
+    const swing=moving?(phase===0?-1:phase===2?1:0):0;
+    rect(x-7,yy+1+swing,3,5,cloth); rect(x+4,yy+1-swing,3,5,cloth);
+    rect(x-7,yy+5+swing,3,2,st); rect(x+4,yy+5-swing,3,2,st);
+    rect(x-7,yy+1+swing,3,2,'#8e6b4d'); rect(x+4,yy+1-swing,3,2,'#8e6b4d');
+    // tronco em camadas, cinto e fivela
+    rect(x-5,yy-1,10,8,'#241d1a'); rect(x-4,yy-1,8,7,cloth);
+    rect(x-4,yy,2,5,'#8a6548'); rect(x+2,yy,2,5,'#171d25');
+    rect(x-3,yy+1,6,1,'#d8b66a'); rect(x-3,yy+4,6,2,'#563824');
+    rect(x-1,yy+4,2,2,'#ffe08a');
+    if(a.style==='mago') {rect(x-5,yy+1,2,6,'#6144a9');rect(x+3,yy+1,2,6,'#6144a9');rect(x-2,yy+1,4,2,'#eee3ff');rect(x-1,yy+2,2,2,'#b89aff');}
+    else if(a.style==='arqueiro') {rect(x-4,yy+1,8,2,'#628e43');rect(x-3,yy+3,6,1,'#b5dc80');rect(x+5,yy-3,2,11,'#b58a51');rect(x+6,yy-4,1,3,'#f5e1a5');}
+    else {rect(x-6,yy-1,3,3,'#b8c6ca');rect(x+3,yy-1,3,3,'#b8c6ca');rect(x-5,yy,2,2,'#e8d08a');rect(x+3,yy,2,2,'#e8d08a');}
+    // cabeça maior no estilo chibi da referência
+    rect(x-6,yy-7,3,4,st); rect(x+3,yy-7,3,4,st);
+    rect(x-6,yy-9,12,10,st); rect(x-5,yy-8,10,8,st); rect(x-5,yy-2,10,2,'#d99579');
+    // cabelo espetado com sombras e mechas claras
+    rect(x-7,yy-10,14,5,hair); rect(x-6,yy-12,5,4,hair); rect(x-2,yy-13,4,4,hair); rect(x+2,yy-11,5,4,hair);
+    rect(x-7,yy-8,3,5,hair); rect(x+4,yy-8,3,4,hair);
+    rect(x-5,yy-11,4,2,'#fff0a0'); rect(x-2,yy-12,3,2,'#ffe17a'); rect(x+2,yy-10,3,2,'#ffd45a');
+    rect(x-6,yy-7,3,2,'#d58a28'); rect(x+4,yy-7,2,2,'#d58a28');
+    // olhos verdes brilhantes quando olha para frente
+    if(face==='up') {rect(x-3,yy-6,6,2,hair);}
+    else if(face==='left') {rect(x-4,yy-4,3,3,'#17232b');rect(x-4,yy-4,2,2,'#42cf72');rect(x-4,yy-4,1,1,'#d8ffb1');}
+    else if(face==='right') {rect(x+1,yy-4,3,3,'#17232b');rect(x+2,yy-4,2,2,'#42cf72');rect(x+3,yy-4,1,1,'#d8ffb1');}
+    else {rect(x-4,yy-5,4,4,'#15231e');rect(x+1,yy-5,4,4,'#15231e');rect(x-3,yy-4,3,3,'#28a954');rect(x+2,yy-4,3,3,'#28a954');rect(x-3,yy-4,1,1,'#eaffb4');rect(x+2,yy-4,1,1,'#eaffb4');rect(x-1,yy-1,2,1,'#b96859');}
+    // acessórios exclusivos para NPCs
+    if(a.role==='elder') {rect(x-6,yy-10,12,2,'#d8d6cb');rect(x-4,yy-12,8,3,'#f4eee0');rect(x-4,yy-1,8,3,'#e4e0d4');rect(x-3,yy,6,2,'#b7b3a8');}
+    if(a.role==='merchant') {rect(x-7,yy-10,14,3,'#a95d32');rect(x-5,yy-12,10,3,'#e7b85d');rect(x-4,yy-9,8,1,'#f5d987');}
+    if(a.race==='anjo') {rect(x-10,yy-2,4,2,'#fff5d7');rect(x-12,yy-4,4,2,'#e4e9ee');rect(x+6,yy-2,4,2,'#fff5d7');rect(x+8,yy-4,4,2,'#e4e9ee');}
+    if(a.race==='demonio') {rect(x-5,yy-14,3,4,'#a72d37');rect(x+2,yy-14,3,4,'#a72d37');}
+    if(a.race==='lobo') {rect(x-6,yy-14,4,5,'#8999a7');rect(x+2,yy-14,4,5,'#8999a7');}
+  }
+  function drawPreview() {
+    const pc=document.getElementById('preview'); if(!pc) return;
+    const pctx=pc.getContext('2d'); pctx.clearRect(0,0,64,64); pctx.imageSmoothingEnabled=false;
+    const r=(x,y,w,h,c)=>{pctx.fillStyle=c;pctx.fillRect(x,y,w,h);};
+    r(18,45,28,5,'#0b202b'); r(22,43,6,8,appearance.pants); r(36,43,6,8,appearance.pants);
+    r(19,29,26,16,appearance.outfit); r(17,30,5,10,appearance.outfit); r(42,30,5,10,appearance.outfit);
+    r(22,33,20,4,appearance.style==='mago'?'#d6b8ff':appearance.style==='arqueiro'?'#8cda73':'#f4cf42');
+    r(20,16,24,18,appearance.skin); r(18,11,28,9,appearance.hair); r(18,16,5,8,appearance.hair); r(41,16,5,8,appearance.hair);
+    r(24,21,4,4,'#176b35'); r(36,21,4,4,'#176b35'); r(24,21,2,2,'#b7ff9c'); r(36,21,2,2,'#b7ff9c'); r(29,28,6,2,'#a85e50');
+    if(appearance.style==='mago'){r(15,9,34,4,'#7e62ce');r(23,3,18,7,'#a68df4');}
+    if(appearance.style==='arqueiro'){r(44,17,4,25,'#d5b17b');r(46,14,2,6,'#f2e0b5');}
+    if(appearance.race==='anjo'){r(5,23,12,5,'#f5f2d6');r(7,20,8,4,'#fffbe8');r(47,23,12,5,'#f5f2d6');r(49,20,8,4,'#fffbe8');r(27,8,10,2,'#f6d76e');}
+    if(appearance.race==='demonio'){r(18,10,6,9,'#d64a43');r(40,10,6,9,'#d64a43');r(20,11,3,5,'#ff9b75');r(41,11,3,5,'#ff9b75');}
+    if(appearance.race==='lobo'){r(18,10,8,12,'#9ba8b7');r(38,10,8,12,'#9ba8b7');r(20,13,4,5,'#d9e0e7');r(40,13,4,5,'#d9e0e7');}
+    if(appearance.race==='elfo'){r(16,18,8,4,appearance.skin);r(40,18,8,4,appearance.skin);r(17,18,6,2,'#d8c08a');r(41,18,6,2,'#d8c08a');}
+    if(appearance.race==='anao'){r(18,28,28,8,'#6b4939');r(23,29,18,7,'#e5e0d3');}
+    if(appearance.race==='morto'){r(23,20,5,4,'#9affb4');r(36,20,5,4,'#9affb4');r(27,28,10,3,'#66777b');}
+  }
+  function buildChoices(id, options, keyName) {
+    const root=document.getElementById(id); root.innerHTML='';
+    options.forEach((item,index)=>{
+      const b=document.createElement('button'); b.type='button'; b.className='swatch'+(appearance[keyName]===item.color?' selected':''); b.style.background=item.color; b.setAttribute('aria-label',item.label); b.title=item.label;
+      b.addEventListener('click',()=>{appearance[keyName]=item.color;root.querySelectorAll('button').forEach(el=>el.classList.remove('selected'));b.classList.add('selected');drawPreview();}); root.appendChild(b);
+    });
+  }
+  function setupCharacterCreator() {
+    buildChoices('skin-choices',[{color:'#ffbd79',label:'Pele clara'},{color:'#d99562',label:'Pele bronzeada'},{color:'#a96843',label:'Pele morena'},{color:'#75452f',label:'Pele escura'}],'skin');
+    buildChoices('hair-choices',[{color:'#f2b52e',label:'Loiro dourado'},{color:'#5b3426',label:'Castanho'},{color:'#1e242b',label:'Preto'},{color:'#b94c3d',label:'Ruivo'},{color:'#e2e4e7',label:'Prateado'}],'hair');
+    buildChoices('outfit-choices',[{color:'#4b3428',label:'Couro marrom'},{color:'#2878f0',label:'Azul'},{color:'#bd493b',label:'Vermelho'},{color:'#268c68',label:'Verde'},{color:'#7548b8',label:'Roxo'}],'outfit');
+    document.querySelectorAll('[data-class]').forEach(b=>b.addEventListener('click',()=>{appearance.style=b.dataset.class;document.querySelectorAll('[data-class]').forEach(x=>x.classList.toggle('selected',x===b));drawPreview();}));
+    document.querySelectorAll('[data-race]').forEach(b=>b.addEventListener('click',()=>{appearance.race=b.dataset.race;document.querySelectorAll('[data-race]').forEach(x=>x.classList.toggle('selected',x===b));const r=raceInfo[appearance.race];document.getElementById('race-bonus').textContent=r.icon+' '+r.name+' — '+r.bonus;drawPreview();}));
+    document.getElementById('hero-name').addEventListener('input',()=>{player.name=document.getElementById('hero-name').value.trim()||'Aventureiro';});
+    drawPreview();
+  }
+  function openCreator() { document.getElementById('start-screen').style.display='flex'; document.getElementById('hero-name').value=player.name||'Aventureiro'; drawPreview(); }
+  function startAdventure() {
+    player.name=document.getElementById('hero-name').value.trim()||'Aventureiro';
+    player.race=appearance.race; player.class=appearance.style;
+    const race=raceInfo[appearance.race]||raceInfo.humano;
+    if(!raceBonusApplied){player.maxHp+=race.hp;player.hp+=race.hp;raceBonusApplied=true;}
+    document.getElementById('start-screen').style.display='none'; gameStarted=true; updateStats();
+    say('Bem-vindo, '+player.name+'! Raça: '+race.name+'. '+race.bonus+'. Explore a vila e fale com o Ancião.');
+  }
+  let minimapTarget=null;
+  function drawMinimap() {
+    if(animationTick % 8 !== 0) return;
+    const mini=document.getElementById('minimap');
+    if(!mini) return;
+    const mctx=mini.getContext('2d');
+    const cw=mini.width/MAP_W, ch=mini.height/MAP_H;
+    const colors={grass:'#4d963f',tree:'#235b32',rock:'#88877b',water:'#348bc0',flower:'#75a94a',path:'#ad8a57',house:'#8b5838',cave:'#383b3b'};
+    mctx.clearRect(0,0,mini.width,mini.height);
+    for(let ty=0;ty<MAP_H;ty++) for(let tx=0;tx<MAP_W;tx++) {
+      mctx.fillStyle=colors[tileAt(tx,ty)]||colors.grass;
+      mctx.fillRect(tx*cw,ty*ch,Math.ceil(cw),Math.ceil(ch));
+    }
+    for(const n of npcs) { mctx.fillStyle=n.type==='elder'?'#ffe37a':'#f3b76b'; mctx.fillRect(n.x/(MAP_W*TILE)*mini.width-1,n.y/(MAP_H*TILE)*mini.height-1,3,3); }
+    for(const t of treasures) if(t.alive) { mctx.fillStyle='#f5d34f'; mctx.fillRect(t.x/(MAP_W*TILE)*mini.width,normMapY(t.y,mini.height),2,2); }
+    for(const e of enemies) if(e.alive) { mctx.fillStyle=e===boss?'#ff43d0':'#ef4d55'; mctx.fillRect(e.x/(MAP_W*TILE)*mini.width-1,e.y/(MAP_H*TILE)*mini.height-1,3,3); }
+    const px=player.x/(MAP_W*TILE)*mini.width, py=player.y/(MAP_H*TILE)*mini.height;
+    mctx.fillStyle='#fff'; mctx.fillRect(px-3,py-3,7,7);
+    mctx.fillStyle='#ffe45e'; mctx.fillRect(px-2,py-2,5,5);
+    if(minimapTarget) { const tx=minimapTarget.x/(MAP_W*TILE)*mini.width, ty=minimapTarget.y/(MAP_H*TILE)*mini.height; mctx.strokeStyle='#fff'; mctx.lineWidth=2; mctx.beginPath(); mctx.arc(tx,ty,5,0,Math.PI*2); mctx.stroke(); mctx.fillStyle='#ffdc4a'; mctx.fillRect(tx-1,ty-1,3,3); }
+    const pos=document.getElementById('map-position');
+    if(pos) pos.textContent='Posição: '+Math.floor(player.x/TILE)+', '+Math.floor(player.y/TILE);
+  }
+  function normMapY(y,height) { return y/(MAP_H*TILE)*height; }
+  // Tocar/clicar no minimapa define um destino; o herói caminha até ele.
+  (function setupInteractiveMinimap(){
+    const mini=document.getElementById('minimap');
+    function setDestination(e){
+      e.preventDefault(); const r=mini.getBoundingClientRect();
+      const mx=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+      const my=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+      const tx=mx*MAP_W*TILE, ty=my*MAP_H*TILE;
+      const tileX=Math.max(1,Math.min(MAP_W-2,Math.floor(tx/TILE)));
+      const tileY=Math.max(1,Math.min(MAP_H-2,Math.floor(ty/TILE)));
+      if(blocked(tileX*TILE+TILE/2,tileY*TILE+TILE/2)){ say('Esse local está bloqueado. Marque outro destino no minimapa.'); return; }
+      minimapTarget={x:tileX*TILE+TILE/2,y:tileY*TILE+TILE/2};
+      const help=document.getElementById('minimap-help'); if(help) help.textContent='Destino marcado! Toque novamente para mudar.';
+      say('Destino marcado no minimapa. Seu personagem vai caminhar até lá.');
+    }
+    mini.addEventListener('pointerdown',setDestination);
+    mini.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault(); minimapTarget={x:Math.min(MAP_W*TILE-16,player.x+TILE*4),y:player.y};}});
+  })();
+  function render() {
+    animationTick++;
+    const camX=Math.max(0,Math.min(MAP_W*TILE-W,player.x-W/2));
+    const camY=Math.max(0,Math.min(MAP_H*TILE-H,player.y-H/2));
+    rect(0,0,W,H,'#39a844');
+    const sx=Math.floor(camX/TILE), sy=Math.floor(camY/TILE);
+    for(let ty=sy;ty<=sy+Math.ceil(H/TILE)+1;ty++) for(let tx=sx;tx<=sx+Math.ceil(W/TILE)+1;tx++) {
+      drawTile(tileAt(tx,ty),tx*TILE-camX,ty*TILE-camY,tx,ty);
+    }
+    for(const t of treasures) if(t.alive && t.x>camX-10&&t.x<camX+W+10&&t.y>camY-10&&t.y<camY+H+10) {
+      const x=t.x-camX,y=t.y-camY;
+      if(t.type==='chest') { rect(x-5,y-3,10,8,'#8a542f'); rect(x-5,y-5,10,4,'#c48a43'); rect(x-1,y-2,3,3,'#f1d76a'); }
+      else { rect(x-2,y-3,4,6,'#e9c94d'); rect(x-1,y-4,2,8,'#fff0a2'); }
+    }
+    for(const e of enemies) if(e.alive && e.x>camX-20&&e.x<camX+W+20&&e.y>camY-20&&e.y<camY+H+20) {
+      const x=e.x-camX,y=e.y-camY+Math.sin(animationTick/5+(e.step||0))*0.8;
+      const enemyStep=Math.floor(animationTick/4+(e.step||0))%2;
+      if(e===boss) {
+        rect(x-12,y+7,24,3,'#102c2c'); rect(x-10,y-8,20,16,'#7938b7'); rect(x-8,y-12-(enemyStep?1:0),5,6,'#c57cff'); rect(x+3,y-12-(enemyStep?1:0),5,6,'#c57cff'); rect(x-13,y-3,3,7,'#552b8c'); rect(x+10,y-3,3,7,'#552b8c');
+        rect(x-6,y-3,3,3,'#ffdf68'); rect(x+3,y-3,3,3,'#ffdf68'); rect(x-5,y+4,10,3,'#302341');
+        rect(x-12,y-17,24,3,'#3a1b2c'); rect(x-11,y-16,22*Math.max(0,e.hp/e.maxHp),1,'#ff435d');
+      } else {
+        const bob=enemyStep?1:0, kind=e.type||'goblin';
+        rect(x-8,y+6,16,2,'#10251f');
+        if(kind==='slime') { rect(x-6,y-2+bob,12,8,'#168a62');rect(x-4,y-5+bob,8,5,'#31d69a');rect(x-3,y-4+bob,3,2,'#8bffd1');rect(x-3,y+1+bob,2,2,'#123c36');rect(x+2,y+1+bob,2,2,'#123c36');rect(x-2,y+4+bob,4,1,'#11624b'); }
+        else if(kind==='skeleton') { rect(x-5,y-3+bob,10,8,'#b8b8a7');rect(x-4,y-7+bob,8,6,'#e5e2d1');rect(x-3,y-5+bob,2,2,'#262d35');rect(x+2,y-5+bob,2,2,'#262d35');rect(x-2,y-1+bob,4,1,'#6c5147');rect(x-6,y+1,2,5,'#c7c3b0');rect(x+4,y+1,2,5,'#c7c3b0');rect(x-4,y+5,3,2,'#e5e2d1');rect(x+1,y+5,3,2,'#e5e2d1'); }
+        else if(kind==='wolf') { rect(x-7,y-1+bob,14,7,'#414c62');rect(x-5,y-5+bob,10,6,'#65748b');rect(x-5,y-8+bob,3,4,'#414c62');rect(x+2,y-8+bob,3,4,'#414c62');rect(x-4,y-4+bob,2,2,'#ffcf57');rect(x+2,y-4+bob,2,2,'#ffcf57');rect(x+4,y+1,4,2,'#303849');rect(x-7,y+1,3,2,'#303849'); }
+        else { rect(x-6,y-3+bob,12,9,'#477b39');rect(x-5,y-7+bob,10,6,'#72a94b');rect(x-7,y-6+bob,3,5,'#477b39');rect(x+4,y-6+bob,3,5,'#477b39');rect(x-4,y-4+bob,3,2,'#f6dc66');rect(x+2,y-4+bob,3,2,'#f6dc66');rect(x-3,y+1+bob,6,2,'#3d2b26');rect(x-7,y+1,2,5,'#31552d');rect(x+5,y+1,2,5,'#31552d'); }
+      }
+    }
+    for(const n of npcs) {
+      const x=n.x-camX,y=n.y-camY;
+      if(x>-12&&x<W+12&&y>-12&&y<H+12) {
+        const npcLook=n.type==='elder'
+          ? {skin:'#d8a77c',hair:'#d8d4c7',outfit:'#c8b98e',pants:'#5d6873',style:'guerreiro',role:'elder'}
+          : {skin:'#b9784d',hair:'#3a2925',outfit:'#bd6a36',pants:'#51403a',style:'arqueiro',role:'merchant'};
+        drawCharacter(x,y,npcLook.outfit,npcLook.skin,npcLook,'down',false,animationTick+(n.type==='elder'?0:7));
+        // marcador de função flutuante e nome em placa
+        const markerY=y-20-Math.sin(animationTick/10+(n.type==='elder'?0:2))*1.2;
+        rect(x-3,markerY-3,6,6,n.type==='elder'?'#f1d76a':'#6fe0b8');
+        if(n.type==='elder') { rect(x-1,markerY-2,2,4,'#fff6c7'); rect(x-2,markerY,4,2,'#fff6c7'); }
+        else { rect(x-2,markerY-2,4,4,'#153b3a'); rect(x-1,markerY-1,2,2,'#f6d36b'); }
+        rect(x-9,y-14,n.name.length*5+4,8,'#172e3a'); rect(x-8,y-13,n.name.length*5+2,1,'#6ab6a4'); ctx.fillStyle='#fff1c5'; ctx.font='6px monospace'; ctx.fillText(n.name,x-7,y-8);
+      }
+    }
+    if(player.invuln<=0 || Math.floor(player.invuln/5)%2===0) drawCharacter(player.x-camX,player.y-camY,appearance.outfit,appearance.skin,appearance,player.face,playerMoving,animationTick);
+    if(player.attack>0) {
+      const fx=player.x-camX, fy=player.y-camY;
+      const face=player.attackFace||player.face;
+      const cls=player.attackClass||appearance.style;
+      const t=12-player.attack;
+      const dx=face==='left'?-1:face==='right'?1:0;
+      const dy=face==='up'?-1:face==='down'?1:0;
+      if(cls==='guerreiro') {
+        // Golpe de espada com arco dourado.
+        const reach=10+Math.floor(t/2);
+        const sx=fx+dx*reach, sy=fy+dy*reach;
+        rect(sx+(dy!==0?-5:0),sy+(dx!==0?-5:0),10,3,'#fff0a0');
+        rect(sx+(dy!==0?-3:0),sy+(dx!==0?-3:0),6,2,'#e8b84d');
+        if(t<5) {
+          rect(fx+dx*7-2,fy+dy*7-2,4,4,'#fff8cf');
+          rect(fx+dx*12-1,fy+dy*12-1,3,3,'#f4d36c');
+        }
+      } else if(cls==='arqueiro') {
+        // Flecha animada em linha reta.
+        const travel=8+t*4;
+        const ax=fx+dx*travel, ay=fy+dy*travel;
+        rect(ax-2,ay-2,4,4,'#d5b17b');
+        rect(ax+dx*3-1,ay+dy*3-1,3,3,'#f2e0b5');
+        rect(ax-dy*2-1,ay+dx*2-1,3,3,'#65452d');
+        if(dx!==0) rect(ax+(dx>0?3:-6),ay-1,4,2,'#fff0a0');
+        else rect(ax-1,ay+(dy>0?3:-6),2,4,'#fff0a0');
+      } else {
+        // Orbe mágico violeta com partículas.
+        const travel=5+t*3;
+        const mx=fx+dx*travel, my=fy+dy*travel;
+        rect(mx-5,my-5,10,10,'#7e62ce');
+        rect(mx-3,my-3,6,6,'#cbb6ff');
+        rect(mx-1,my-2,3,4,'#fff4ff');
+        rect(mx+dy*7-1,my+dx*7-1,3,3,'#f1d8ff');
+        rect(mx-dy*7-1,my-dx*7-1,3,3,'#a68df4');
+      }
+    }
+    // Rótulos de região estilo MMORPG clássico.
+    const px=Math.floor(player.x/TILE), py=Math.floor(player.y/TILE);
+    let region='Campos da Vila';
+    if(px<23 && py>12) region='Floresta Antiga';
+    else if(px>MAP_W-25 && py<28) region='Ruínas Rochosas';
+    else if(py>MAP_H-24 && px>20) region='Pradaria Florida';
+    else if(Math.abs(px-(36+Math.floor(5*Math.sin(py/9))))<3) region='Rio Cristalino';
+    rect(5,5,104,22,'#123d3b'); ctx.fillStyle='#fff8b8'; ctx.font='7px monospace';
+    ctx.fillText(region,9,14); ctx.fillStyle='#b7f7ce'; ctx.fillText('POS '+px+','+py,9,23);
+    // Ponte de madeira sobre a passagem do rio.
+    if(py>=42&&py<=46) {
+      const bridgeX=(36+Math.floor(5*Math.sin(py/9)))*TILE-camX;
+      rect(bridgeX-4,0,8,H,'#a87543');
+      for(let by=0;by<H;by+=8) { rect(bridgeX-4,by,8,2,'#e4bb6e'); rect(bridgeX-5,by,1,3,'#754329'); }
+    }
+    if(player.hp<=0) { rect(70,75,180,42,'#18202b'); ctx.fillStyle='#f1d76a'; ctx.font='10px monospace'; ctx.fillText('FIM DE JOGO',125,91); ctx.fillStyle='#fff1c5'; ctx.fillText('Recomece para jogar',105,104); }
+    if(player.attack>0) player.attack--;
+    if(player.invuln>0) player.invuln--;
+    drawMinimap();
+    requestAnimationFrame(render);
+  }
+  function loop() {
+    playerMoving=false;
+    if(quest===2 && inventory.keys>0) { inventory.keys--; quest=3; spawnBoss(); updateStats(); }
+    if(quest===3 && !bossSpawned) spawnBoss();
+    if(keys.ArrowUp||keys.w||keys.W) move(0,-1);
+    if(keys.ArrowDown||keys.s||keys.S) move(0,1);
+    if(keys.ArrowLeft||keys.a||keys.A) move(-1,0);
+    if(keys.ArrowRight||keys.d||keys.D) move(1,0);
+    if(minimapTarget && !keys.ArrowUp && !keys.ArrowDown && !keys.ArrowLeft && !keys.ArrowRight && !keys.w && !keys.W && !keys.a && !keys.A && !keys.s && !keys.S && !keys.d && !keys.D) {
+      const dx=minimapTarget.x-player.x, dy=minimapTarget.y-player.y, dist=Math.hypot(dx,dy);
+      if(dist<7){minimapTarget=null; const help=document.getElementById('minimap-help'); if(help) help.textContent='Destino alcançado! Toque no mapa para outro.';}
+      else { move(dx/dist,0); move(0,dy/dist); }
+    }
+    // Monstros perseguem o jogador quando estão próximos.
+    for(const e of enemies) if(e.alive && Math.hypot(player.x-e.x,player.y-e.y)<75 && player.hp>0) {
+      e.step++;
+      if(e.step%5===0) {
+        const dx=player.x-e.x,dy=player.y-e.y;
+        const nx=e.x+Math.sign(dx)*0.7, ny=e.y+Math.sign(dy)*0.7;
+        if(!blocked(nx,ny)) { e.x=nx; e.y=ny; }
+      }
+    }
+    setTimeout(loop,30);
+  }
+  window.addEventListener('keydown',e=>{
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    keys[e.key]=true;
+    if(e.key===' '&&!e.repeat) doAttack();
+  });
+  window.addEventListener('keyup',e=>keys[e.key]=false);
+  // Analógico virtual: aponta a direção e mantém o movimento enquanto o dedo estiver pressionando.
+  (()=>{
+    const joy=document.getElementById('joystick'), stick=document.getElementById('joystick-stick');
+    const directionKeys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+    let pointer=null;
+    function resetJoy(){ directionKeys.forEach(k=>keys[k]=false); stick.style.left='calc(50% - 22px)'; stick.style.top='calc(50% - 22px)'; pointer=null; }
+    function steer(e){
+      const r=joy.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+      let dx=e.clientX-cx, dy=e.clientY-cy; const max=r.width*0.30, dist=Math.hypot(dx,dy);
+      if(dist>max){dx=dx/dist*max;dy=dy/dist*max;}
+      stick.style.left=`calc(50% - 22px + ${dx}px)`; stick.style.top=`calc(50% - 22px + ${dy}px)`;
+      directionKeys.forEach(k=>keys[k]=false);
+      if(Math.hypot(dx,dy)>8){ if(dy < -7) keys.ArrowUp=true; if(dy > 7) keys.ArrowDown=true; if(dx < -7) keys.ArrowLeft=true; if(dx > 7) keys.ArrowRight=true; }
+    }
+    joy.addEventListener('pointerdown',e=>{e.preventDefault();pointer=e.pointerId;joy.setPointerCapture(pointer);steer(e);});
+    joy.addEventListener('pointermove',e=>{if(e.pointerId===pointer){e.preventDefault();steer(e);}});
+    joy.addEventListener('pointerup',e=>{if(e.pointerId===pointer)resetJoy();});
+    joy.addEventListener('pointercancel',resetJoy); joy.addEventListener('lostpointercapture',()=>{if(pointer!==null)resetJoy();});
+  })();
+  document.getElementById('attack').addEventListener('click',doAttack);
+  document.getElementById('start-adventure').addEventListener('click',startAdventure);
+  document.getElementById('edit-hero').addEventListener('click',openCreator);
+  document.getElementById('landscape-btn').addEventListener('click',async()=>{
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+      if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+      say('Modo deitado ativado! Se o celular não girar, ative a rotação automática e vire o aparelho.');
+    } catch (err) {
+      say('Vire o celular de lado e ative a rotação automática nas configurações rápidas.');
+    }
+  });
+  setupCharacterCreator();
+  // Recupera automaticamente o último progresso salvo neste navegador.
+  try { if(localStorage.getItem('reinoPixelSave')) loadGame(); } catch(e) {}
+  document.getElementById('heal').addEventListener('click',heal);
+  document.getElementById('potion').addEventListener('click',usePotion);
+  document.getElementById('talk').addEventListener('click',talk);
+  document.getElementById('save').addEventListener('click',saveGame);
+  document.getElementById('load').addEventListener('click',loadGame);
+  document.getElementById('open-bag').addEventListener('click',()=>{ renderBag(); document.getElementById('inventory-modal').classList.add('open'); });
+  document.getElementById('open-updates').addEventListener('click',()=>document.getElementById('updates-modal').classList.add('open'));
+  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{ document.getElementById(b.dataset.close).classList.remove('open'); selectedBagSlot=null; renderBag(); }));
+  document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{ if(e.target===m) { m.classList.remove('open'); selectedBagSlot=null; renderBag(); } }));
+  window.addEventListener('keydown',e=>{ if((e.key==='e'||e.key==='E')&&!e.repeat) talk(); if((e.key==='q'||e.key==='Q')&&!e.repeat) usePotion(); });
+  // Recomeçar com toque/click no cenário quando derrotado.
+  canvas.addEventListener('click',()=>{
+    if(player.hp<=0) {
+      player.x=MAP_W*TILE/2; player.y=MAP_H*TILE/2; player.hp=player.maxHp; player.coins=0; player.xp=0; player.level=1;
+      enemies.forEach(e=>{e.alive=true;e.hp=2;}); treasures.forEach(t=>t.alive=true);
+      updateStats(); say('Você voltou à vila. Boa aventura!');
+    }
+  });
+  updateStats(); say('Explore a Floresta Antiga, atravesse o Rio Cristalino e descubra as Ruínas Rochosas!'); render(); loop();
+})();
+</script>
+</body>
+</html>
